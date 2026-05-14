@@ -1,0 +1,1 @@
+from .evaluator import celery_app

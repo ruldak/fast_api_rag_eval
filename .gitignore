@@ -1,0 +1,79 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+dist/
+downloads/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+ENV/
+
+# Environment variables
+.env
+
+# FastAPI / Uvicorn
+*.log
+
+# Database
+*.db
+*.sqlite3
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Static / media uploads
+media/
+uploads/
+
+# Temporary files
+tmp/
+temp/
+
+# Node modules (kalau ada frontend)
+node_modules/
+
+# Docker
+docker-compose.override.yml
+
+# Alembic migrations cache
+alembic/__pycache__/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# PyCharm
+*.iml
