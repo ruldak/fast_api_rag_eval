@@ -11,7 +11,6 @@ from app.models import EvaluationRun, EvaluationItem, MetricDefinition, Score
 from app.services.groq_client import GroqClient
 from app.services.prompt_builder import PromptBuilder
 
-# Setup logging dengan format yang mudah dibaca
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s | %(levelname)-8s | %(name)s | %(message)s',
@@ -35,7 +34,7 @@ def run_evaluation(self, run_id: str):
     
     db = SessionLocal()
     try:
-        # 1. Ambil run dan update status
+        # 1. Fetch run and update status
         logger.info(f"[RUN:{run_id}] 📥 Fetching evaluation run from database...")
         run = db.execute(select(EvaluationRun).where(EvaluationRun.id == run_id)).scalar_one()
         
@@ -43,7 +42,7 @@ def run_evaluation(self, run_id: str):
         db.commit()
         logger.info(f"[RUN:{run_id}] 🔄 Status updated to 'processing'")
 
-        # 2. Ambil items dan metrics
+        # 2. Fetch items and metrics
         items = db.execute(
             select(EvaluationItem).where(EvaluationItem.run_id == run_id)
         ).scalars().all()
@@ -66,14 +65,14 @@ def run_evaluation(self, run_id: str):
         builder = PromptBuilder()
         semaphore = asyncio.Semaphore(5)
 
-        # 4. Definisikan async worker per item-metric
+        # 4. Define async worker per item-metric
         async def process_item(item, metric_name):
             metric = metric_map.get(metric_name)
             if not metric:
                 logger.warning(f"[RUN:{run_id}] ⚠️  Metric '{metric_name}' not found, skipping")
                 return None
 
-            # Skip correctness jika tidak ada ground_truth
+            # Skip correctness if no ground_truth is provided
             if metric_name == "correctness" and not item.ground_truth:
                 logger.info(f"[RUN:{run_id}] ⏭️  Item {item.id} | correctness skipped (no ground_truth)")
                 return None
@@ -133,7 +132,7 @@ def run_evaluation(self, run_id: str):
                         "details": {"error": error_msg, "prompt_length": len(prompt)}
                     }
 
-        # 5. Jalankan semua evaluasi secara async
+        # 5. Execute all evaluations asynchronously
         async def process_all():
             tasks = []
             for idx, item in enumerate(items, 1):
@@ -145,7 +144,7 @@ def run_evaluation(self, run_id: str):
             
             results = await asyncio.gather(*tasks, return_exceptions=True)
             
-            # Log ringkasan
+            # Log summary
             success = sum(1 for r in results if isinstance(r, dict) and r.get("value") is not None)
             failed = sum(1 for r in results if isinstance(r, dict) and r.get("value") is None)
             errors = sum(1 for r in results if isinstance(r, Exception))
@@ -157,7 +156,7 @@ def run_evaluation(self, run_id: str):
 
         results = asyncio.run(process_all())
 
-        # 6. Simpan semua score ke database
+        # 6. Save all scores to the database
         logger.info(f"[RUN:{run_id}] 💾 Saving scores to database...")
         saved_count = 0
         for res in results:
@@ -174,7 +173,7 @@ def run_evaluation(self, run_id: str):
         db.commit()
         logger.info(f"[RUN:{run_id}] 💾 Saved {saved_count} scores")
 
-        # 7. Update status completed
+        # 7. Update status to completed
         run.status = "completed"
         run.metadata_["processed_at"] = str(time.time())
         db.commit()

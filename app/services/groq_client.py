@@ -39,13 +39,11 @@ class GroqClient:
         return result
     
     def _parse_json(self, text: str) -> Dict[str, Any]:
-        # Coba parse langsung
         try:
             return json.loads(text.strip())
         except json.JSONDecodeError:
             pass
         
-        # Cari JSON di dalam markdown code block
         patterns = [
             r"```json\s*([\s\S]*?)\s*```",
             r"```\s*([\s\S]*?)\s*```",

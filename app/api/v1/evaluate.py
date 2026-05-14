@@ -138,20 +138,17 @@ async def list_evaluations(
     db: AsyncSession = Depends(get_async_db),
     tenant: Tenant = Depends(get_tenant)
 ):
-    # Base query dengan filter tenant
     base_stmt = select(EvaluationRun).where(EvaluationRun.tenant_id == tenant.id)
     count_stmt = select(func.count(EvaluationRun.id)).where(EvaluationRun.tenant_id == tenant.id)
     
-    # Filter status jika diberikan
     if status:
         base_stmt = base_stmt.where(EvaluationRun.status == status)
         count_stmt = count_stmt.where(EvaluationRun.status == status)
     
-    # Hitung total
     total_result = await db.execute(count_stmt)
     total = total_result.scalar_one()
     
-    # Ambil data dengan pagination + eager load item count
+    # Fetch data with pagination + eager load item count
     stmt = (
         base_stmt
         .options(selectinload(EvaluationRun.items))
