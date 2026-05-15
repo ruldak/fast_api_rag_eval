@@ -77,3 +77,4 @@ alembic/__pycache__/
 
 # PyCharm
 *.iml
+.aider*
