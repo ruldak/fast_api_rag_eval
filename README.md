@@ -84,7 +84,7 @@ graph TD
 
 2. **Spin Up Infrastructure:**
    ```bash
-   docker-compose -f docker/docker-compose.yml up --build -d
+   docker-compose -f docker/docker-compose.yml --env-file .env up --build -d
    ```
 
 3. **Initialize Database:**
