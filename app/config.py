@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     
     # API
     GROQ_API_KEY: str = ""
-    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+    CORS_ORIGINS: str = "*"
     ALLOWED_HOSTS: str = "*"
     
     # Logging

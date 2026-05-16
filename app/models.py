@@ -1,9 +1,8 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Float, DateTime, ForeignKey, JSON, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
-from datetime import datetime, timezone
 
 def now_utc():
     return datetime.now(timezone.utc)
@@ -16,7 +15,7 @@ class Tenant(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
     api_key_hash = Column(String(64), nullable=False, unique=True)
-    created_at = Column(DateTime, default=now_utc)
+    created_at = Column(DateTime(timezone=True), default=now_utc)
     
     runs = relationship("EvaluationRun", back_populates="tenant")
     metrics = relationship("MetricDefinition", back_populates="tenant")
@@ -28,8 +27,8 @@ class EvaluationRun(Base):
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     status = Column(String(20), default="pending")
     metadata_ = Column("metadata", JSON, default=dict)
-    created_at = Column(DateTime, default=now_utc)
-    updated_at = Column(DateTime, default=now_utc, onupdate=now_utc)
+    created_at = Column(DateTime(timezone=True), default=now_utc)
+    updated_at = Column(DateTime(timezone=True), default=now_utc, onupdate=now_utc)
     
     tenant = relationship("Tenant", back_populates="runs")
     items = relationship("EvaluationItem", back_populates="run", cascade="all, delete-orphan")
@@ -44,7 +43,7 @@ class EvaluationItem(Base):
     contexts = Column(JSON, default=list)
     ground_truth = Column(Text, nullable=True)
     payload_raw = Column(JSON, default=dict)
-    created_at = Column(DateTime, default=now_utc)
+    created_at = Column(DateTime(timezone=True), default=now_utc)
     
     run = relationship("EvaluationRun", back_populates="items")
     scores = relationship("Score", back_populates="item", cascade="all, delete-orphan")
@@ -57,7 +56,7 @@ class MetricDefinition(Base):
     name = Column(String(255), nullable=False)
     type = Column(String(20), nullable=False)
     config = Column(JSON, default=dict)
-    created_at = Column(DateTime, default=now_utc)
+    created_at = Column(DateTime(timezone=True), default=now_utc)
     
     __table_args__ = (UniqueConstraint('tenant_id', 'name', name='uix_tenant_metric_name'),)
     
@@ -72,7 +71,7 @@ class Score(Base):
     metric_id = Column(UUID(as_uuid=True), ForeignKey("metric_definitions.id"), nullable=False)
     value = Column(Float, nullable=True)
     details = Column(JSON, default=dict)
-    created_at = Column(DateTime, default=now_utc)
+    created_at = Column(DateTime(timezone=True), default=now_utc)
     
     item = relationship("EvaluationItem", back_populates="scores")
     metric = relationship("MetricDefinition", back_populates="scores")
