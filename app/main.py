@@ -9,7 +9,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.config import settings
 from app.database import async_engine, check_database_connection
-from app.api.v1 import evaluate, metrics, comparisons, tenants
+from app.api.v1 import evaluate, metrics, comparisons, tenants, calibration
 
 def setup_logging():
     if settings.LOG_FORMAT == "json":
@@ -86,6 +86,7 @@ app.include_router(evaluate.router, prefix="/api/v1")
 app.include_router(metrics.router, prefix="/api/v1")
 app.include_router(comparisons.router, prefix="/api/v1")
 app.include_router(tenants.router, prefix="/api/v1")
+app.include_router(calibration.router, prefix="/api/v1")
 
 
 @app.exception_handler(Exception)

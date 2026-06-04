@@ -75,3 +75,26 @@ class Score(Base):
     
     item = relationship("EvaluationItem", back_populates="scores")
     metric = relationship("MetricDefinition", back_populates="scores")
+
+class HumanReview(Base):
+    __tablename__ = "human_reviews"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    item_id = Column(UUID(as_uuid=True), ForeignKey("evaluation_items.id"), nullable=False)
+    metric_id = Column(UUID(as_uuid=True), ForeignKey("metric_definitions.id"), nullable=False)
+    
+    human_score = Column(Float, nullable=False)
+    human_reason = Column(Text, nullable=True)
+    reviewer_id = Column(String(255), nullable=False)
+    
+    llm_score = Column(Float, nullable=True)
+    
+    agreement_delta = Column(Float, nullable=True)
+    
+    reviewed_at = Column(DateTime, default=datetime.utcnow)
+    
+    item = relationship("EvaluationItem", back_populates="human_reviews")
+    metric = relationship("MetricDefinition", back_populates="human_reviews")
+
+EvaluationItem.human_reviews = relationship("HumanReview", back_populates="item", cascade="all, delete-orphan")
+MetricDefinition.human_reviews = relationship("HumanReview", back_populates="metric", cascade="all, delete-orphan")

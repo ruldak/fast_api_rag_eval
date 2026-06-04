@@ -87,4 +87,30 @@ class TenantCreate(BaseModel):
 class TenantResponse(BaseModel):
     id: str
     name: str
-    api_key: str
+    api_key: Optional[str] = None
+
+class HumanReviewRequest(BaseModel):
+    item_id: UUID
+    metric_id: UUID
+    human_score: float = Field(..., ge=0.0, le=1.0)
+    human_reason: Optional[str] = None
+    reviewer_id: str
+
+class HumanReviewResponse(BaseModel):
+    id: UUID
+    item_id: UUID
+    metric_name: str
+    human_score: float
+    llm_score: Optional[float]
+    agreement_delta: Optional[float]
+    reviewed_at: datetime
+
+class CalibrationReport(BaseModel):
+    metric_name: str
+    total_reviewed: int
+    mean_human_score: float
+    mean_llm_score: float
+    mean_absolute_error: float
+    correlation_pearson: Optional[float]
+    bias_detected: bool
+    samples: List[Dict[str, Any]]
