@@ -79,7 +79,7 @@ async def submit_human_review(
 @router.get("/calibration-report", response_model=list[CalibrationReport])
 async def get_calibration_report(
     metric_name: Optional[str] = None,
-    min_samples: int = 1,
+    min_samples: int = 20,
     db: AsyncSession = Depends(get_async_db),
     tenant: Tenant = Depends(get_tenant)
 ):
