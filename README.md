@@ -464,7 +464,6 @@ Statistical report comparing human judgments against LLM scores **per metric**. 
 | Migrations | **Alembic** | Schema versioning |
 | LLM Engine | **Groq API** (Llama 3.1, Mixtral) | Low-latency inference for LLM-as-a-Judge |
 | Prompting | **Jinja2** | Dynamic templating for custom metrics |
-| Testing | **pytest** + **pytest-asyncio** | Unit & integration tests with mocked Celery/Groq |
 | Infrastructure | **Docker** + **Docker Compose** | Environment parity, horizontal worker scaling |
 
 ---
@@ -499,21 +498,6 @@ docker-compose -f docker/docker-compose.yml exec api python -m app.seed
 ### Default Dev Credentials
 - **Tenant:** `dev`
 - **API Key:** `dev-api-key-12345` (pass via `X-API-Key` header)
-
----
-
-## Testing
-
-```bash
-# Run all tests
-pytest tests/ -v
-
-# Test coverage includes:
-# - API endpoint integration (TestClient + mocked Celery)
-# - Prompt rendering & JSON parsing logic
-# - Multi-tenant middleware & access control
-# - Calibration math (MAE, Pearson correlation)
-```
 
 ---
 
