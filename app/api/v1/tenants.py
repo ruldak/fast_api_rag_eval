@@ -2,12 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.api.deps import get_async_db
+from app.api.deps import get_async_db, get_tenant
 from app.models import Tenant, MetricDefinition
 from app.utils.security import generate_api_key, hash_api_key
 from app.schemas import TenantCreate, TenantResponse
 
 router = APIRouter()
+
+@router.get("/tenants/me", response_model=TenantResponse, status_code=200)
+async def get_tenant(tenant: Tenant = Depends(get_tenant), db: AsyncSession = Depends(get_async_db)):
+    return TenantResponse(id=str(tenant.id), name=tenant.name)
 
 @router.post("/tenants", response_model=TenantResponse, status_code=201)
 async def create_tenant(
