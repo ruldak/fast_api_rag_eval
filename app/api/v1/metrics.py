@@ -29,12 +29,21 @@ async def create_metric(
     if result.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Metric name already exists for this tenant")
     
+    config = request.config.model_dump()
+    if request.type == "custom" and config.get("prompt_template"):
+        prompt_suffix = (
+            '\n\nProvide a score from 0.0 to 1.0 where 1.0 means good. '
+            'Output only JSON: {"score": <float>, "reason": "<explanation>"}'
+        )
+        config["prompt_template"] = config["prompt_template"].rstrip() + prompt_suffix
+
     metric = MetricDefinition(
         tenant_id=tenant.id,
         name=request.name,
         type=request.type,
-        config=request.config.model_dump()
+        config=config
     )
+    
     db.add(metric)
     await db.commit()
     await db.refresh(metric)
