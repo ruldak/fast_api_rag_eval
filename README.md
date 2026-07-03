@@ -501,6 +501,43 @@ docker-compose -f docker/docker-compose.yml exec api python -m app.seed
 
 ---
 
+## Running Tests
+
+This project uses `pytest` and `pytest-asyncio` for testing. Tests are run locally against a dedicated PostgreSQL test database which is automatically created and dropped before and after the test session runs.
+
+### Prerequisites
+1. Ensure your local PostgreSQL server is running on `localhost:5432` with:
+   - **Username**: `postgres`
+   - **Password**: `123`
+   
+   > [!NOTE]
+   > If your local PostgreSQL credentials differ, you can adjust the `TEST_DB_URL_ASYNC` and `ADMIN_DB_URL_SYNC` connection variables in [tests/conftest.py](file:///D:/coding/fast-api/rag-eval-harness/tests/conftest.py).
+   
+2. Make sure your virtual environment (`venv`) is activated and all dependencies in `requirements.txt` are installed.
+
+### Running the Tests
+
+1. Activate your virtual environment:
+   - **Windows (PowerShell):**
+     ```powershell
+     .\venv\Scripts\Activate.ps1
+     ```
+   - **Windows (CMD):**
+     ```cmd
+     .\venv\Scripts\activate.bat
+     ```
+   - **Linux / macOS:**
+     ```bash
+     source venv/bin/activate
+     ```
+
+2. Run `pytest`:
+   ```bash
+   pytest
+   ```
+
+---
+
 ## Engineering Decisions & Trade-offs
 
 ### 1. Why 202 Accepted + Polling instead of Webhooks?
