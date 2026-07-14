@@ -102,7 +102,7 @@ Registers a new tenant and generates an API key. **Save the API key returned in 
 {
   "id": "e4f8d55c-1122-3344-5566-778899aabbcc",
   "name": "Acme Corporation",
-  "api_key": "rag_eval_..."
+  "api_key": "rag_..."
 }
 ```
 
