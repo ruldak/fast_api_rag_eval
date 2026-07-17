@@ -10,6 +10,7 @@ from app.database import sync_engine
 from app.models import EvaluationRun, EvaluationItem, MetricDefinition, Score
 from app.services.groq_client import GroqClient
 from app.services.prompt_builder import PromptBuilder
+import random
 
 logging.basicConfig(
     level=logging.INFO,
@@ -59,11 +60,11 @@ def run_evaluation(self, run_id: str):
             f"requested: {requested_metrics}"
         )
 
-        # 3. Build lookup maps
         metric_map = {m.name: m for m in metrics}
         client = GroqClient(api_key=settings.GROQ_API_KEY)
         builder = PromptBuilder()
-        semaphore = asyncio.Semaphore(5)
+        
+        semaphore = asyncio.Semaphore(2)
 
         # 4. Define async worker per item-metric
         async def process_item(item, metric_name):
@@ -72,17 +73,11 @@ def run_evaluation(self, run_id: str):
                 logger.warning(f"[RUN:{run_id}] ⚠️  Metric '{metric_name}' not found, skipping")
                 return None
 
-            # Skip correctness if no ground_truth is provided
             if metric_name == "correctness" and not item.ground_truth:
                 logger.info(f"[RUN:{run_id}] ⏭️  Item {item.id} | correctness skipped (no ground_truth)")
                 return None
 
             async with semaphore:
-                logger.info(
-                    f"[RUN:{run_id}] 🤖 Processing | item={item.id} | metric={metric_name} | "
-                    f"model={metric.config.get('model', 'llama-3.1-8b-instant')}"
-                )
-                
                 prompt = builder.build(
                     metric=metric,
                     query=item.query,
@@ -91,46 +86,55 @@ def run_evaluation(self, run_id: str):
                     ground_truth=item.ground_truth
                 )
 
-                try:
-                    result = await client.evaluate(
-                        prompt,
-                        metric.config.get("model", "llama-3.1-8b-instant"),
-                        metric.config.get("temperature", 0.0)
-                    )
-                    
-                    score_value = result.get("score")
-                    logger.info(
-                        f"[RUN:{run_id}] ✅ Success | item={item.id} | metric={metric_name} | "
-                        f"score={score_value} | tokens={result.get('token_usage', {})}"
-                    )
-                    
-                    return {
-                        "item_id": item.id,
-                        "metric_id": metric.id,
-                        "value": score_value,
-                        "details": result
-                    }
-
-                except Exception as e:
-                    error_msg = str(e)
-                    if "rate_limit" in error_msg.lower() or "429" in error_msg:
-                        logger.warning(
-                            f"[RUN:{run_id}] ⏳ Rate limited | item={item.id} | metric={metric_name} | "
-                            f"retrying in {60 * (self.request.retries + 1)}s"
+                # --- IMPLEMENTASI LOCAL RETRY LOOP ---
+                max_local_retries = 7
+                for attempt in range(max_local_retries):
+                    try:
+                        result = await client.evaluate(
+                            prompt,
+                            metric.config.get("model", "llama-3.1-8b-instant"),
+                            metric.config.get("temperature", 0.0)
                         )
-                        await asyncio.sleep(2 ** self.request.retries)
-                        raise self.retry(exc=e, countdown=60)
-                    
-                    logger.error(
-                        f"[RUN:{run_id}] ❌ Failed | item={item.id} | metric={metric_name} | "
-                        f"error={error_msg}"
-                    )
-                    return {
-                        "item_id": item.id,
-                        "metric_id": metric.id,
-                        "value": None,
-                        "details": {"error": error_msg, "prompt_length": len(prompt)}
-                    }
+                        
+                        score_value = result.get("score")
+                        logger.info(
+                            f"[RUN:{run_id}] ✅ Success | item={item.id} | metric={metric_name} | "
+                            f"score={score_value} | tokens={result.get('token_usage', {})}"
+                        )
+                        
+                        return {
+                            "item_id": item.id,
+                            "metric_id": metric.id,
+                            "value": score_value,
+                            "details": result
+                        }
+
+                    except Exception as e:
+                        error_msg = str(e)
+                        is_rate_limit = "rate_limit" in error_msg.lower() or "429" in error_msg
+                        
+                        # Jika Rate Limit DAN masih ada sisa retry
+                        if is_rate_limit and attempt < max_local_retries - 1:
+                            # Exponential Backoff: 1s, 2s, 4s, 8s, 16s, 32s, 64s
+                            # Ditambah Jitter (angka acak 0-1 detik) agar request tidak menumpuk serentak setelah sleep
+                            wait_time = (2 ** attempt) + random.uniform(0, 1)
+                            logger.warning(
+                                f"[RUN:{run_id}] ⏳ Rate limited | item={item.id} | metric={metric_name} | "
+                                f"attempt {attempt + 1}/{max_local_retries} | retrying in {wait_time:.2f}s"
+                            )
+                            await asyncio.sleep(wait_time)
+                            continue
+                        
+                        logger.error(
+                            f"[RUN:{run_id}] ❌ Failed | item={item.id} | metric={metric_name} | "
+                            f"error={error_msg}"
+                        )
+                        return {
+                            "item_id": item.id,
+                            "metric_id": metric.id,
+                            "value": None,
+                            "details": {"error": error_msg, "prompt_length": len(prompt)}
+                        }
 
         # 5. Execute all evaluations asynchronously
         async def process_all():
@@ -140,7 +144,7 @@ def run_evaluation(self, run_id: str):
                     tasks.append(process_item(item, metric_name))
             
             total_tasks = len(tasks)
-            logger.info(f"[RUN:{run_id}] 🏃 Starting {total_tasks} total evaluations (max 5 parallel)")
+            logger.info(f"[RUN:{run_id}] 🏃 Starting {total_tasks} total evaluations (max 3 parallel)")
             
             results = await asyncio.gather(*tasks, return_exceptions=True)
             
