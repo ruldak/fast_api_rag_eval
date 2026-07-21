@@ -65,11 +65,6 @@ function getModelName(metadata: EvaluationRun["metadata"]): string {
   return m.model_tested || m.model || "llama-3.1-8b-instant"
 }
 
-function getEnvironment(metadata: EvaluationRun["metadata"]): string {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (metadata as any).environment || "default"
-}
-
 export function OverviewPage({ onNavigate }: OverviewPageProps) {
   const { health, apiKey } = useApi()
   const [runs, setRuns] = useState<EvaluationRun[]>([])

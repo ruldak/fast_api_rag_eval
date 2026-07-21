@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Copy, Eye, EyeOff, CheckCircle2, RefreshCw } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,7 +11,7 @@ import { createTenant, verifyApiKey, ApiError } from "@/lib/api"
 import { toast } from "sonner"
 
 export function SettingsPage() {
-  const { apiKey, setApiKey, clearApiKey, tenant, health, refreshTenant, refreshHealth } = useApi()
+  const { apiKey, setApiKey, clearApiKey, tenant, health, refreshHealth } = useApi()
   const [keyVisible, setKeyVisible] = useState(false)
   const [copied, setCopied] = useState(false)
   const [newOrgName, setNewOrgName] = useState("")

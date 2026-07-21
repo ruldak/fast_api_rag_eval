@@ -499,32 +499,142 @@ Statistical report comparing human judgments against LLM scores **per metric**. 
 
 ---
 
-## Getting Started
+## Getting Started (Full App with Docker)
+
+This is the **recommended** way to run the whole stack: backend API, Celery worker, PostgreSQL, Redis, **and the React dashboard** — all from a single `docker compose up`. No local Node, Python, Postgres, or Redis install required.
 
 ### Prerequisites
 - Docker & Docker Compose
 - Groq API Key ([get one here](https://console.groq.com))
 
 ### 1. Environment Setup
+
 ```bash
 cp backend/.env.example backend/.env
-# Edit backend/.env and set GROQ_API_KEY=gsk_...
+# Edit backend/.env and at minimum set:
+#   GROQ_API_KEY=gsk_...
+# For pure local development, also relax CORS_ORIGINS so the dashboard can call the API:
+#   CORS_ORIGINS=*
 ```
 
-### 2. Launch Infrastructure
+> **About `CORS_ORIGINS`:** `backend/.env.example` ships with sample production domains. For a local Compose run, set `CORS_ORIGINS=*` so the dashboard at `http://localhost:5173` can call the API without browser CORS rejections.
+
+### 2. Launch the App
+
 ```bash
 docker compose -f docker/docker-compose.yml --env-file backend/.env up --build -d
 ```
 
-### 3. Initialize Database
+This brings up **all five services**:
+
+| Service    | URL / Port            | Purpose                                                                 |
+|------------|----------------------|-------------------------------------------------------------------------|
+| `db`       | `db:5432` (internal) | PostgreSQL 15 with a persistent named volume                            |
+| `redis`    | `redis:6379` (internal) | Celery broker / result backend                                        |
+| `api`      | `http://localhost:8000` | FastAPI service; exposes `/docs`, `/health`, `/ready`, and `/api/v1/*` |
+| `worker`   | (internal)           | Celery worker that calls the Groq LLM for evaluation jobs               |
+| `frontend` | `http://localhost:5173` | React dashboard served as a static SPA by `serve`                     |
+
+Tail logs from a specific service any time with:
+
+```bash
+docker compose -f docker/docker-compose.yml logs -f api worker frontend
+```
+
+### 3. Initialize the Database
+
 ```bash
 docker compose -f docker/docker-compose.yml exec api alembic upgrade head
 docker compose -f docker/docker-compose.yml exec api python -m app.seed
 ```
 
+The seed command creates the default `dev` tenant and three predefined metrics (`faithfulness`, `answer_relevancy`, `correctness`). The dev tenant's API key is fixed (see **Default Dev Credentials** under [Frontend Development](#frontend-development-local)) — paste it into the dashboard's API-key prompt on first visit.
+
 ### 4. Verify
-- API Docs: `http://localhost:8000/docs`
-- Health Check: `curl http://localhost:8000/health`
+
+- **Dashboard:** `http://localhost:5173`
+- **API Docs:** `http://localhost:8000/docs`
+- **Health:** `curl http://localhost:8000/health`
+- **Smoke test:** `curl -X POST http://localhost:8000/api/v1/tenants -H "Content-Type: application/json" -d '{"name":"smoke-test"}'`
+
+### Tearing Down
+
+```bash
+docker compose -f docker/docker-compose.yml down        # stop containers, keep the Postgres volume
+docker compose -f docker/docker-compose.yml down -v     # stop containers AND wipe the Postgres volume
+```
+
+### Production Note
+
+For real deployments behind a TLS-terminating reverse proxy (Caddy, nginx, Traefik, …), see [Deployment with a Reverse Proxy](#deployment-with-a-reverse-proxy) below for a complete Caddy 2 Caddyfile that fronts the existing compose stack.
+
+---
+
+## Deployment with a Reverse Proxy
+
+The shipped Compose stack exposes the React dashboard and the FastAPI API on **two separate ports** (`5173` and `8000`). That's fine for local development but not for production — every browser request should originate from a single origin, ideally HTTPS.
+
+Put a TLS-terminating reverse proxy of your choice in front of both services. **Caddy 2** is the most zero-config option because it issues Let's Encrypt certificates automatically on first start. The pattern below uses Caddy as a **front door** that forwards traffic by path while the existing `frontend` and `api` containers keep doing exactly what they already do — `serve -s dist -l 3000` for the SPA and `uvicorn app.main:app` for FastAPI.
+
+The expected topology is **Caddy running externally** (on the host, on a different machine, or as a managed reverse proxy) in front of an unchanged Compose stack. The Compose service names (`api`, `frontend`) are not real hostnames — they only resolve inside the Docker network — so the Caddyfile addresses the compose containers via the **host-mapped ports** they already expose.
+
+### What the proxy must do
+
+Three routes back into the app, decided purely by the request path:
+
+1. `/api/*`, `/health`, `/ready` → the `api` container, reachable as `http://localhost:8000` thanks to the compose `api: 8000:8000` mapping
+2. Everything else → the `frontend` container, reachable as `http://localhost:5173` thanks to the compose `frontend: 5173:3000` mapping
+3. Single origin + HTTPS at the edge
+
+This matches the production intent already baked into the frontend (`VITE_API_BASE_URL` is left empty so the dashboard issues same-origin requests).
+
+### Caddyfile
+
+Save as `docker/Caddyfile` (or any path of your choice). The site **address** in the first line is the only thing that changes between production and local:
+
+```caddy
+# Production — replace with your real domain in production. Caddy
+# requests a Let's Encrypt certificate automatically on first start.
+your-domain.example.com {
+
+    # API traffic → FastAPI service via the compose `api` service's
+    # `8000:8000` host mapping. The plain-`http://` URL is intentional:
+    # FastAPI listens unencrypted, and Caddy terminates TLS at the edge.
+    reverse_proxy /api/*  http://localhost:8000
+    reverse_proxy /health http://localhost:8000
+    reverse_proxy /ready  http://localhost:8000
+
+    # Everything else → React dashboard via the compose `frontend`
+    # service's `5173:3000` host mapping.
+    reverse_proxy /* http://localhost:5173
+}
+```
+
+For local development (plain HTTP), the **address** changes. The compose `frontend` service already claims host port `5173`, so Caddy must take a different port:
+
+```caddy
+http://localhost:8080 {
+
+    reverse_proxy /api/*  http://localhost:8000
+    reverse_proxy /health http://localhost:8000
+    reverse_proxy /ready  http://localhost:8000
+    reverse_proxy /*      http://localhost:5173
+}
+```
+
+> **Port collision:** the compose `frontend: 5173:3000` mapping means host port 5173 is already in use. If you also make Caddy bind 5173, the second listener fails. Pick any port other than `5173` for Caddy's site address — `8080` is the conventional alternative.
+
+> **Why this works without `try_files` / `file_server`:** the `frontend` container's `serve -s dist -l 3000` already does the SPA fallback (single-page-app routing). Caddy only has to forward paths.
+
+### Re-deploying changes
+
+The `frontend` Dockerfile builds the SPA inside the image and `serve -s dist -l 3000` runs on container start, so there is **no host-side `npm run build` step** to remember. Frontend code changes only need:
+
+```bash
+docker compose -f docker/docker-compose.yml up -d --build frontend
+```
+
+If you only edited the Caddyfile, restart Caddy however you normally do — `caddy run --config …`, `caddy reload`, your init system, or whatever you use to manage it externally — no rebuild is needed because the Caddyfile is a config file, not a baked-in image layer.
 
 ---
 
@@ -703,11 +813,13 @@ The session fixture in `tests/conftest.py` automatically creates and drops `rag_
 
 ---
 
-## Frontend Development
+## Frontend Development (Local)
+
+> **Heads up:** This section is for **local frontend development** only (live-reload, editing React code). To run the whole app, follow **[Getting Started](#getting-started-full-app-with-docker)** above instead — `docker compose up` already serves the dashboard at `http://localhost:5173`.
 
 ### Prerequisites
 - Node.js 18+ and npm (or yarn/pnpm)
-- Backend API running (see above)
+- Backend API running (either via Docker, or natively — see "Running Without Docker" below)
 
 ### Setup
 ```bash
@@ -719,10 +831,22 @@ npm install
 ```bash
 npm run dev
 ```
-The dev server starts at `http://localhost:5173` with hot module replacement (HMR).
+Starts at `http://localhost:5173` with hot module replacement (HMR).
 
 ### API Proxy
-Vite is configured to proxy `/api` requests to the backend. Update the target in `vite.config.ts` if your backend runs on a different URL.
+`vite.config.ts` proxies `/api`, `/health`, and `/ready` to the backend. The default target points at a Codespaces/GitHub dev tunnel. **Edit `frontend/vite.config.ts` to point it at your local backend** (typically `http://localhost:8000`) when running natively:
+
+```ts
+server: {
+  proxy: {
+    "/api":   { target: "http://localhost:8000", changeOrigin: true },
+    "/health":{ target: "http://localhost:8000", changeOrigin: true },
+    "/ready": { target: "http://localhost:8000", changeOrigin: true },
+  },
+},
+```
+
+If your backend is already running via Docker, the proxy target can stay at `http://localhost:8000` (Docker maps the API container's port 8000 onto the host).
 
 ### Available Scripts
 

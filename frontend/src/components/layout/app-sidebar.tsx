@@ -21,7 +21,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { Badge } from "@/components/ui/badge"
 import type { Page } from "@/lib/types"
 
 interface AppSidebarProps {

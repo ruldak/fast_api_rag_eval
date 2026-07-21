@@ -41,15 +41,15 @@ import { fetchMetrics, createMetric, updateMetric, deleteMetric, ApiError } from
 import type { Metric, MetricType } from "@/lib/types"
 import { toast } from "sonner"
 
-function MetricTypeBadge({ type }: { type: MetricType }) {
+function MetricTypeBadge({ type, className }: { type: MetricType; className?: string }) {
   if (type === "predefined")
     return (
-      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-0 gap-1">
+      <Badge className={`bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-0 gap-1 ${className || ""}`}>
         <Sparkles className="size-3" /> Predefined
       </Badge>
     )
   return (
-    <Badge className="bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400 border-0 gap-1">
+    <Badge className={`bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400 border-0 gap-1 ${className || ""}`}>
       <Code2 className="size-3" /> Custom
     </Badge>
   )

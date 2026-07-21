@@ -48,22 +48,6 @@ function StatusBadge({ status }: { status: RunStatus }) {
   return <Badge variant="destructive">Failed</Badge>
 }
 
-function ScoreCell({ value }: { value: number }) {
-  const pct = Math.round(value * 100)
-  const colorClass =
-    value >= 0.85
-      ? "[&>div]:bg-emerald-500 text-emerald-700 dark:text-emerald-400"
-      : value >= 0.7
-        ? "[&>div]:bg-amber-500 text-amber-700 dark:text-amber-400"
-        : "[&>div]:bg-destructive text-destructive"
-  return (
-    <div className="flex items-center gap-2 min-w-[90px]">
-      <Progress value={pct} className={`h-1.5 flex-1 ${colorClass}`} />
-      <span className={`text-xs font-mono w-7 text-right ${colorClass.split(" ").slice(1).join(" ")}`}>{pct}%</span>
-    </div>
-  )
-}
-
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
@@ -73,7 +57,7 @@ function formatDate(iso: string) {
   })
 }
 
-function RunRow({ run, detail, onClick }: { run: EvaluationRun; detail?: EvaluationDetail; onClick: () => void }) {
+function RunRow({ run, onClick }: { run: EvaluationRun; detail?: EvaluationDetail; onClick: () => void }) {
   return (
     <TableRow className="cursor-pointer hover:bg-muted/50" onClick={onClick}>
       <TableCell className="text-[10px] sm:text-xs">
@@ -81,7 +65,7 @@ function RunRow({ run, detail, onClick }: { run: EvaluationRun; detail?: Evaluat
       </TableCell>
       <TableCell className="text-[10px] sm:text-xs">
         {run.metadata.model ? (
-          <code className="bg-muted px-1 py-0.5 rounded text-[9px] sm:text-xs">{run.metadata.model}</code>
+          <code className="bg-muted px-1 py-0.5 rounded text-[9px] sm:text-xs">{String(run.metadata.model)}</code>
         ) : (
           <code className="bg-muted px-1 py-0.5 rounded text-[9px] sm:text-xs">llama-3.1-8b-instant</code>
         )}

@@ -1,4 +1,4 @@
-export type RunStatus = "pending" | "completed" | "failed"
+export type RunStatus = "pending" | "completed" | "failed" | "processing"
 export type MetricType = "predefined" | "custom"
 
 export interface Tenant {
