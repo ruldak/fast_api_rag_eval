@@ -1,9 +1,26 @@
 # RAG Evaluation Harness
 
 > **A production-grade "LLM-as-a-Judge" calibration platform for RAG systems.**  
-> *Built with FastAPI, Celery, PostgreSQL, and Groq LLMs — engineered for high-throughput async evaluation and human-in-the-loop trust.*
+> *Full-stack monorepo with a React dashboard and FastAPI backend — engineered for high-throughput async evaluation and human-in-the-loop trust.*
 
 ---
+
+## Project Structure
+
+```
+├── backend/              # FastAPI + Celery + PostgreSQL backend
+│   ├── app/              # Application code (API, services, models)
+│   ├── tests/            # Pytest test suite
+│   └── alembic/          # Database migrations
+├── docker/               # Docker Compose & Dockerfiles
+└── frontend/             # React + TypeScript dashboard
+    ├── src/
+    │   ├── components/   # Reusable UI components (shadcn/ui)
+    │   ├── pages/        # Page-level components
+    │   ├── lib/          # API client, types, utilities
+    │   └── hooks/        # Custom React hooks
+    └── package.json
+```
 
 ## What Is This?
 
@@ -456,6 +473,8 @@ Statistical report comparing human judgments against LLM scores **per metric**. 
 
 ## Tech Stack
 
+### Backend
+
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
 | API Framework | **FastAPI** + Pydantic V2 | Async request handling, strict validation |
@@ -465,6 +484,18 @@ Statistical report comparing human judgments against LLM scores **per metric**. 
 | LLM Engine | **Groq API** (Llama 3.1, Mixtral) | Low-latency inference for LLM-as-a-Judge |
 | Prompting | **Jinja2** | Dynamic templating for custom metrics |
 | Infrastructure | **Docker** + **Docker Compose** | Environment parity, horizontal worker scaling |
+
+### Frontend
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Framework | **React 19** + **TypeScript** | Modern UI with type safety |
+| Build Tool | **Vite 7** | Fast HMR and optimized builds |
+| Styling | **Tailwind CSS 4** | Utility-first CSS framework |
+| UI Components | **shadcn/ui** + **Radix UI** | Accessible, composable component library |
+| Charts | **Recharts** | Data visualization for metrics and calibration |
+| Forms | **React Hook Form** + **Zod** | Type-safe form validation |
+| Icons | **Lucide React** | Consistent iconography |
 
 ---
 
@@ -476,24 +507,250 @@ Statistical report comparing human judgments against LLM scores **per metric**. 
 
 ### 1. Environment Setup
 ```bash
-cp .env.example .env
-# Edit .env and set GROQ_API_KEY=gsk_...
+cp backend/.env.example backend/.env
+# Edit backend/.env and set GROQ_API_KEY=gsk_...
 ```
 
 ### 2. Launch Infrastructure
 ```bash
-docker-compose -f docker/docker-compose.yml --env-file .env up --build -d
+docker compose -f docker/docker-compose.yml --env-file backend/.env up --build -d
 ```
 
 ### 3. Initialize Database
 ```bash
-docker-compose -f docker/docker-compose.yml exec api alembic upgrade head
-docker-compose -f docker/docker-compose.yml exec api python -m app.seed
+docker compose -f docker/docker-compose.yml exec api alembic upgrade head
+docker compose -f docker/docker-compose.yml exec api python -m app.seed
 ```
 
 ### 4. Verify
 - API Docs: `http://localhost:8000/docs`
 - Health Check: `curl http://localhost:8000/health`
+
+---
+
+## Running Without Docker
+
+If you prefer to run the backend natively (no Docker, no Compose), this section walks through every dependency and command you need to replicate the container setup on your host machine.
+
+### Prerequisites
+
+| Tool | Recommended Version | Notes |
+|------|---------------------|-------|
+| Python | **3.11+** | Matches the image used by `Dockerfile.api` / `Dockerfile.worker` |
+| PostgreSQL | **15+** | Must be running on `localhost:5432` with credentials usable by `DATABASE_URL` |
+| Redis | **7+** | Must be running on `localhost:6379` |
+| Groq API Key | — | Get one from [console.groq.com](https://console.groq.com) |
+
+> **Tip:** If you already have Docker installed, you can still run Postgres + Redis via `docker compose -f docker/docker-compose.yml up db redis -d` and only run the API/worker natively. This is the easiest hybrid setup.
+
+### 1. Create Local Postgres & Redis Databases
+
+**PostgreSQL** (the project defaults assume `postgres` user with password `123`):
+
+```bash
+# macOS
+brew install postgresql@15
+brew services start postgresql@15
+
+# Debian/Ubuntu
+sudo apt install postgresql-15
+sudo systemctl start postgresql
+
+# Then set up the user, password, and database
+psql -U postgres <<'SQL'
+ALTER USER postgres WITH PASSWORD '123';
+CREATE DATABASE rag_eval;
+SQL
+```
+
+> On a fresh Debian/Ubuntu install the `postgres` role authenticates via `peer`, so run the heredoc through `sudo -u postgres psql <<'SQL' ... SQL` if you're not already in a session where peer auth is allowed. On macOS the `psql -U postgres` form above normally works out of the box.
+
+> If your local Postgres uses a different user/password, just substitute them into the URL in step 4.
+
+**Redis**:
+
+```bash
+# macOS
+brew install redis
+brew services start redis
+
+# Debian/Ubuntu
+sudo apt install redis-server
+sudo systemctl start redis-server
+
+# Foreground (any OS)
+redis-server
+```
+
+### 2. Create a Python Virtual Environment
+
+```bash
+cd backend
+python3.11 -m venv venv
+source venv/bin/activate            # Windows PowerShell: .\venv\Scripts\Activate.ps1
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### 3. Configure Environment Variables
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+Then edit `backend/.env` so the `DATABASE_URL` / `DATABASE_URL_SYNC` point at your **local** Postgres and `REDIS_URL` at your **local** Redis:
+
+```dotenv
+ENVIRONMENT=development
+DATABASE_URL=postgresql+asyncpg://postgres:123@localhost:5432/rag_eval
+DATABASE_URL_SYNC=postgresql+psycopg2://postgres:123@localhost:5432/rag_eval
+REDIS_URL=redis://localhost:6379/1
+GROQ_API_KEY=gsk_your_key_here
+LOG_LEVEL=INFO
+LOG_FORMAT=text
+```
+
+> **Redis DB usage:** The FastAPI app and Celery workers currently share a single Redis database (defaulting to DB `1` via `REDIS_URL`) for both broker messaging and task result storage. Plain `redis-server` covers this perfectly. `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` are defined in `app/config.py` for future use but are not consumed by the worker yet.
+
+### 4. Apply Database Migrations
+
+`backend/alembic.ini` ships with a hardcoded `sqlalchemy.url` pointing at the Docker service hostname `db`. When running natively, **edit that line** so Alembic talks to your local Postgres:
+
+1. Open `backend/alembic.ini` and find:
+   ```ini
+   sqlalchemy.url = postgresql://postgres:postgres@db:5432/rag_eval
+   ```
+2. Replace it with your local connection string, for example:
+   ```ini
+   sqlalchemy.url = postgresql://postgres:123@localhost:5432/rag_eval
+   ```
+
+Then run:
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+> Note: `alembic -x "sqlalchemy.url=..."` looks like a cleaner alternative, but the bundled `backend/alembic/env.py` reads the URL directly from `alembic.ini` and does not consume `-x` arguments, so the override would be silently dropped.
+
+> If you later switch back to the Docker-based workflow, revert this change so `sqlalchemy.url` once again points at `db:5432` (the Compose service name). Otherwise `docker compose exec api alembic upgrade head` will try to talk to a `db` host that isn't running.
+
+### 5. Seed the Default Tenant
+
+```bash
+cd backend
+python -m app.seed
+```
+
+You should see logs that the `dev` tenant and the three predefined metrics (`faithfulness`, `answer_relevancy`, `correctness`) were created.
+
+### 6. Start the API Server
+
+Open **Terminal 1**:
+
+```bash
+cd backend
+source venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### 7. Start the Celery Worker
+
+Open **Terminal 2** (keep Terminal 1 running):
+
+```bash
+cd backend
+source venv/bin/activate
+celery -A app.tasks.evaluator worker --loglevel=info --concurrency=2
+```
+
+> The worker reads `REDIS_URL` from `.env` (defaults to db `1`) and uses it for **both** the Celery broker and the result backend.
+
+### 8. Verify
+
+- API Docs: `http://localhost:8000/docs`
+- Health Check: `curl http://localhost:8000/health`
+- Trigger a smoke test:
+  ```bash
+  curl -X POST http://localhost:8000/api/v1/tenants \
+       -H "Content-Type: application/json" \
+       -d '{"name":"smoke-test"}'
+  ```
+
+### Common Issues
+
+| Symptom | Likely Cause | Fix |
+|---------|--------------|-----|
+| `alembic` errors with `could not translate host name "db"` | `backend/alembic.ini` still has the Docker service hostname baked in | Update the `sqlalchemy.url` line per step 4 |
+| `asyncpg.exceptions.InvalidPasswordError` | Postgres password doesn't match `.env` | Update `DATABASE_URL` / `DATABASE_URL_SYNC`, then restart the API |
+| `celery` keeps disconnecting/losing tasks | Redis not running on `localhost:6379` | Start Redis (`brew services start redis` or `redis-server`) |
+| `RuntimeError: Database connection failed on startup` (in production mode) | `ENVIRONMENT=production` rejects default credentials | Set `ENVIRONMENT=development` in `.env` for local work |
+| Worker is silent when `POST /evaluate` is called | API and worker are reading different `.env`/Redis | Ensure Terminals 1 & 2 are both running from `backend/` with the same `.env` |
+
+### Running Tests Locally
+
+The test suite (`tests/`) is designed to be run **without Docker** — it expects PostgreSQL on `localhost:5432`:
+
+```bash
+cd backend
+source venv/bin/activate
+pytest
+```
+
+The session fixture in `tests/conftest.py` automatically creates and drops `rag_eval_test` against your local Postgres. Adjust `TEST_DB_URL_ASYNC` / `ADMIN_DB_URL_SYNC` there if your local credentials differ.
+
+---
+
+## Frontend Development
+
+### Prerequisites
+- Node.js 18+ and npm (or yarn/pnpm)
+- Backend API running (see above)
+
+### Setup
+```bash
+cd frontend
+npm install
+```
+
+### Development Server
+```bash
+npm run dev
+```
+The dev server starts at `http://localhost:5173` with hot module replacement (HMR).
+
+### API Proxy
+Vite is configured to proxy `/api` requests to the backend. Update the target in `vite.config.ts` if your backend runs on a different URL.
+
+### Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server with HMR |
+| `npm run build` | Type-check and build for production |
+| `npm run typecheck` | Run TypeScript type checking only |
+| `npm run preview` | Preview production build locally |
+
+### Frontend Pages
+
+| Page | Description |
+|------|-------------|
+| **Overview** | Dashboard with key metrics, score trends, and model comparisons |
+| **Evaluations** | List and detail views of evaluation runs with per-item scores |
+| **Metrics** | Manage predefined and custom evaluation metrics |
+| **Human Reviews** | Submit and review human judgments for calibration |
+| **Calibration** | Statistical report comparing human vs LLM scores |
+| **Settings** | Configure API key and tenant information |
+
+### Frontend Architecture
+
+- **State Management:** React Context (`ApiProvider`) for global API key and tenant state
+- **API Client:** Typed fetch wrapper in `src/lib/api.ts` with error handling
+- **Type Safety:** Shared TypeScript types in `src/lib/types.ts`
+- **Styling:** Tailwind CSS with `cn()` utility for conditional class merging
+- **Components:** shadcn/ui components in `src/components/ui/`
 
 ### Default Dev Credentials
 - **Tenant:** `dev`
