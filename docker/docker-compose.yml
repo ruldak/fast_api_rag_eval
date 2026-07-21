@@ -45,5 +45,15 @@ services:
     deploy:
       replicas: 1
 
+  frontend:
+    image: rag-eval-harness-frontend:latest
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+      args:
+        - VITE_API_BASE_URL=
+    ports:
+      - "5173:3000"
+
 volumes:
   postgres_data:

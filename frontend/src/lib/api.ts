@@ -8,7 +8,13 @@ import type {
   HealthStatus,
 } from "./types"
 
-const BASE_URL = "https://upgraded-giggle-5g97467pv75gh4xw7-8000.app.github.dev"
+// Base URL for API requests.
+// - In production: leave empty (default) so requests are same-origin. The frontend
+//   is reverse-proxied (Caddy/nginx) and the `/api/*` paths are forwarded to the api service.
+// - For local dev: set VITE_API_BASE_URL in frontend/.env.local to point at an external backend
+//   (e.g. a Codespaces/GH dev URL or a local FastAPI on http://localhost:8000).
+//   The typed declaration lives in frontend/src/vite-env.d.ts.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ""
 
 function getApiKey(): string | null {
   try {
