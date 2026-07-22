@@ -100,6 +100,8 @@ export type Page =
   | "overview"
   | "evaluations"
   | "evaluation-detail"
+  | "new-evaluation"
+  | "compare-evaluations"
   | "metrics"
   | "human-reviews"
   | "calibration"

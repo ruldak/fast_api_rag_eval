@@ -7,6 +7,8 @@ import {
   Settings,
   Activity,
   ChevronRight,
+  PlusCircle,
+  GitCompare,
 } from "lucide-react"
 import {
   Sidebar,
@@ -30,7 +32,9 @@ interface AppSidebarProps {
 
 const navItems = [
   { id: "overview" as Page, label: "Overview", icon: LayoutDashboard },
+  { id: "new-evaluation" as Page, label: "New Evaluation", icon: PlusCircle },
   { id: "evaluations" as Page, label: "Evaluations", icon: Layers, badge: "2" },
+  { id: "compare-evaluations" as Page, label: "Compare Evaluations", icon: GitCompare },
   { id: "metrics" as Page, label: "Metrics", icon: Gauge },
   { id: "human-reviews" as Page, label: "Human Reviews", icon: Users, badge: "5" },
   { id: "calibration" as Page, label: "Calibration", icon: BarChart3 },

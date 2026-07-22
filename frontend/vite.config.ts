@@ -12,18 +12,18 @@ export default defineConfig({
     },
   },
   server: {
-    allowedHosts: ['unchivalric-tamia-praedial.ngrok-free.dev'],
+    allowedHosts: ['localhost'],
     proxy: {
       "/api": {
-        target: "https://upgraded-giggle-5g97467pv75gh4xw7-8000.app.github.dev",
+        target: "http://localhost:8000",
         changeOrigin: true,
       },
       "/health": {
-        target: "https://upgraded-giggle-5g97467pv75gh4xw7-8000.app.github.dev",
+        target: "http://localhost:8000",
         changeOrigin: true,
       },
       "/ready": {
-        target: "https://upgraded-giggle-5g97467pv75gh4xw7-8000.app.github.dev",
+        target: "http://localhost:8000",
         changeOrigin: true,
       },
     },

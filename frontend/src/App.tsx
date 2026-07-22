@@ -9,6 +9,8 @@ import { MetricsPage } from "@/pages/metrics-page"
 import { HumanReviewsPage } from "@/pages/human-reviews-page"
 import { CalibrationPage } from "@/pages/calibration-page"
 import { SettingsPage } from "@/pages/settings-page"
+import { NewEvaluationPage } from "@/pages/new-evaluation-page"
+import { CompareEvaluationsPage } from "@/pages/compare-evaluations-page"
 import { ApiProvider } from "@/lib/api-context"
 import { Toaster } from "@/components/ui/sonner"
 import type { Page } from "@/lib/types"
@@ -17,6 +19,8 @@ const pageTitles: Record<Page, string> = {
   overview: "Overview",
   evaluations: "Evaluations",
   "evaluation-detail": "Run Details",
+  "new-evaluation": "New Evaluation",
+  "compare-evaluations": "Compare Evaluations",
   metrics: "Metrics",
   "human-reviews": "Human Reviews",
   calibration: "Calibration",
@@ -50,6 +54,8 @@ export default function App() {
             {currentPage === "evaluation-detail" && selectedRunId && (
               <EvaluationDetailPage runId={selectedRunId} onBack={() => setCurrentPage("evaluations")} />
             )}
+            {currentPage === "new-evaluation" && <NewEvaluationPage onNavigate={navigate} />}
+            {currentPage === "compare-evaluations" && <CompareEvaluationsPage />}
             {currentPage === "metrics" && <MetricsPage />}
             {currentPage === "human-reviews" && <HumanReviewsPage />}
             {currentPage === "calibration" && <CalibrationPage />}

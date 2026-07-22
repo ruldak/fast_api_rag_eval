@@ -213,6 +213,21 @@ export async function evaluateSingle(payload: {
   })
 }
 
+export async function compareEvaluations(payload: {
+  run_ids: string[]
+}): Promise<{
+  comparison: Record<string, {
+    status: string
+    metadata: Record<string, unknown>
+    scores: Record<string, number | null>
+  }>
+}> {
+  return request("/api/v1/evaluations/compare", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+}
+
 // ── Human Reviews ───────────────────────────────────────
 export async function fetchHumanReviewSamples(params?: {
   run_id?: string
