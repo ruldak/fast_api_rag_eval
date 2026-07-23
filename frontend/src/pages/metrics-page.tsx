@@ -14,6 +14,13 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -66,6 +73,12 @@ const defaultConfig = {
   output_schema: '{"score": "float", "reason": "string"}',
   temperature: "0.0",
 }
+
+const GROQ_MODELS: { value: string; label: string }[] = [
+  { value: "llama-3.1-8b-instant", label: "llama-3.1-8b-instant" },
+  { value: "llama-3.3-70b-versatile", label: "llama-3.3-70b-versatile" },
+  { value: "openai/gpt-oss-20b", label: "openai/gpt-oss-20b" },
+]
 
 export function MetricsPage() {
   const { apiKey } = useApi()
@@ -389,6 +402,11 @@ interface MetricFormProps {
 }
 
 function MetricForm({ form, onChange }: MetricFormProps) {
+  const isKnownModel = GROQ_MODELS.some((m) => m.value === form.model)
+  const modelSelectValue = form.model
+    ? (isKnownModel ? form.model : `__custom__:${form.model}`)
+    : "llama-3.1-8b-instant"
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
@@ -413,11 +431,29 @@ function MetricForm({ form, onChange }: MetricFormProps) {
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label>Model</Label>
-          <Input
-            value={form.model}
-            onChange={(e) => onChange({ ...form, model: e.target.value })}
-            placeholder="llama-3.1-8b-instant"
-          />
+          <Select
+            value={modelSelectValue}
+            onValueChange={(v) => {
+              const next = v.startsWith("__custom__:") ? v.slice("__custom__:".length) : v
+              onChange({ ...form, model: next })
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {!isKnownModel && form.model && (
+                <SelectItem value={`__custom__:${form.model}`}>
+                  {form.model} (current)
+                </SelectItem>
+              )}
+              {GROQ_MODELS.map((m) => (
+                <SelectItem key={m.value} value={m.value}>
+                  {m.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label>Temperature</Label>
