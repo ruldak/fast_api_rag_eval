@@ -273,7 +273,9 @@ function ReviewPanel({ sample, review, onScoreChange, onReasonChange, onSubmit, 
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1">Context</p>
               <div className="rounded-md border p-3">
-                <p className="text-xs text-muted-foreground">{sample.contexts[0]}</p>
+                {sample.contexts.map((context) => (
+                  <p className="text-xs text-muted-foreground">{context}</p>
+                ))}
               </div>
             </div>
           )}
