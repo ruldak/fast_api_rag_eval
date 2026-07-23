@@ -31,10 +31,9 @@ async def create_metric(
     
     config = request.config.model_dump()
     if request.type == "custom" and config.get("prompt_template"):
-        prompt_suffix = (
-            '\n\nProvide a score from 0.0 to 1.0 where 1.0 means good. '
-            'Output only JSON: {"score": <float>, "reason": "<explanation>"}'
-        )
+        prompt_suffix = """\n\nQuery: {{query}} Response: {{response}} Contexts: {{contexts}}\n\nGround truth: {{ground_truth}}\n\nProvide a score from 0.0 to 1.0 where 1.0 means good. '
+            Output only JSON: {"score": <float>, "reason": "<explanation>"}"""
+        
         config["prompt_template"] = config["prompt_template"].rstrip() + prompt_suffix
 
     metric = MetricDefinition(

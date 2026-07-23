@@ -405,7 +405,7 @@ function MetricForm({ form, onChange }: MetricFormProps) {
         <Textarea
           value={form.prompt_template}
           onChange={(e) => onChange({ ...form, prompt_template: e.target.value })}
-          placeholder="Evaluate the response on a scale of 0 to 1. Query: {{query}} Response: {{response}}"
+          placeholder="Evaluate the response on a scale of 0 to 1"
           className="min-h-[120px] font-mono text-xs"
         />
         <p className="text-xs text-muted-foreground">Use {"{{query}}"}, {"{{response}}"}, {"{{context}}"} as template variables.</p>
