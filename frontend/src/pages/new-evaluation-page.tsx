@@ -75,19 +75,19 @@ export function NewEvaluationPage({ onNavigate }: NewEvaluationPageProps) {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">New Evaluation</h1>
-        <p className="text-muted-foreground">Run a single evaluation item against your metrics.</p>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">New Evaluation</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Run a single evaluation item against your metrics.</p>
       </div>
 
       <Card>
         <form onSubmit={handleSubmit}>
           <CardHeader>
-            <CardTitle>Evaluation Item</CardTitle>
-            <CardDescription>Provide the query, model response, and context to evaluate.</CardDescription>
+            <CardTitle className="text-lg md:text-xl">Evaluation Item</CardTitle>
+            <CardDescription className="text-xs md:text-sm">Provide the query, model response, and context to evaluate.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="query">Query <span className="text-red-500">*</span></Label>
+              <Label htmlFor="query" className="text-sm md:text-base">Query <span className="text-red-500">*</span></Label>
               <Input 
                 id="query" 
                 placeholder="What is the user's question?" 
@@ -97,7 +97,7 @@ export function NewEvaluationPage({ onNavigate }: NewEvaluationPageProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="response">Model Response <span className="text-red-500">*</span></Label>
+              <Label htmlFor="response" className="text-sm md:text-base">Model Response <span className="text-red-500">*</span></Label>
               <Textarea 
                 id="response" 
                 placeholder="The answer provided by your LLM" 
@@ -108,7 +108,7 @@ export function NewEvaluationPage({ onNavigate }: NewEvaluationPageProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="contexts">Contexts (One per line)</Label>
+              <Label htmlFor="contexts" className="text-sm md:text-base">Contexts (One per line)</Label>
               <Textarea 
                 id="contexts" 
                 placeholder="Retrieved context chunks (optional)" 
@@ -118,7 +118,7 @@ export function NewEvaluationPage({ onNavigate }: NewEvaluationPageProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="groundTruth">Ground Truth (Optional)</Label>
+              <Label htmlFor="groundTruth" className="text-sm md:text-base">Ground Truth (Optional)</Label>
               <Textarea 
                 id="groundTruth" 
                 placeholder="The ideal or expected answer" 
@@ -128,13 +128,13 @@ export function NewEvaluationPage({ onNavigate }: NewEvaluationPageProps) {
             </div>
 
             <div className="space-y-2 pt-4">
-              <Label>Metrics to Evaluate <span className="text-red-500">*</span></Label>
+              <Label className="text-sm md:text-base">Metrics to Evaluate <span className="text-red-500">*</span></Label>
               {loading ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Loading metrics...
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-4 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                   {metrics.map((metric) => (
                     <div key={metric.id} className="flex items-center space-x-2">
                       <Checkbox 
@@ -142,7 +142,7 @@ export function NewEvaluationPage({ onNavigate }: NewEvaluationPageProps) {
                         checked={selectedMetrics.includes(metric.name)}
                         onCheckedChange={() => toggleMetric(metric.name)}
                       />
-                      <Label htmlFor={`metric-${metric.id}`} className="font-normal cursor-pointer">
+                      <Label htmlFor={`metric-${metric.id}`} className="font-normal cursor-pointer text-sm md:text-base">
                         {metric.name}
                         {metric.type === 'predefined' && <span className="ml-2 text-xs text-muted-foreground">(Predefined)</span>}
                       </Label>
@@ -152,9 +152,9 @@ export function NewEvaluationPage({ onNavigate }: NewEvaluationPageProps) {
               )}
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button variant="outline" type="button" onClick={() => onNavigate("evaluations")}>Cancel</Button>
-            <Button type="submit" disabled={submitting || loading}>
+          <CardFooter className="flex flex-col-reverse sm:flex-row mt-4 justify-between gap-4 sm:gap-0">
+            <Button variant="outline" type="button" className="w-full sm:w-auto" onClick={() => onNavigate("evaluations")}>Cancel</Button>
+            <Button type="submit" className="w-full sm:w-auto" disabled={submitting || loading}>
               {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Evaluating...</> : "Run Evaluation"}
             </Button>
           </CardFooter>

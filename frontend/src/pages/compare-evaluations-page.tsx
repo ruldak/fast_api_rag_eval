@@ -80,15 +80,15 @@ export function CompareEvaluationsPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Compare Evaluations</h1>
-        <p className="text-muted-foreground">Select multiple completed evaluation runs to compare their metric scores side-by-side.</p>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Compare Evaluations</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Select multiple completed evaluation runs to compare their metric scores side-by-side.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-1 flex flex-col h-[600px]">
+        <Card className="md:col-span-1 flex flex-col h-[400px] md:h-[600px]">
           <CardHeader>
-            <CardTitle>Select Runs</CardTitle>
-            <CardDescription>Choose at least two runs</CardDescription>
+            <CardTitle className="text-lg md:text-xl">Select Runs</CardTitle>
+            <CardDescription className="text-xs md:text-sm">Choose at least two runs</CardDescription>
           </CardHeader>
           <CardContent className="flex-1 overflow-auto space-y-3">
             {loading ? (
@@ -107,10 +107,10 @@ export function CompareEvaluationsPage() {
                     className="mt-1"
                   />
                   <div className="flex flex-col space-y-1">
-                    <Label htmlFor={`run-${run.run_id}`} className="font-medium cursor-pointer text-sm">
+                    <Label htmlFor={`run-${run.run_id}`} className="font-medium cursor-pointer text-xs md:text-sm">
                       {format(new Date(run.created_at), "MMM d, yyyy HH:mm")}
                     </Label>
-                    <div className="text-xs text-muted-foreground truncate w-[180px]" title={run.run_id}>
+                    <div className="text-[10px] md:text-xs text-muted-foreground truncate w-[140px]" title={run.run_id}>
                       {run.run_id}
                     </div>
                     {run.metadata?.model_tested && (
@@ -132,27 +132,27 @@ export function CompareEvaluationsPage() {
 
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle>Comparison Results</CardTitle>
-            <CardDescription>Side-by-side metric score comparison</CardDescription>
+            <CardTitle className="text-lg md:text-xl">Comparison Results</CardTitle>
+            <CardDescription className="text-xs md:text-sm">Side-by-side metric score comparison</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-2 md:p-6">
             {!tableData ? (
               <div className="text-center p-10 text-muted-foreground border border-dashed rounded-lg">
                 Select runs and click Compare to see results here.
               </div>
             ) : (
-              <div className="rounded-md border">
-                <Table>
+              <div className="rounded-md border overflow-x-auto">
+                <Table className="min-w-[100px] sm:min-w-[200px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[200px]">Metric</TableHead>
+                      <TableHead className="w-[0px] md:w-[0px] sm:p-2 md:p-1 text-xs md:text-sm">Metric</TableHead>
                       {tableData.runIds.map((id) => {
                         const r = runs.find((x) => x.run_id === id)
                         const model = r?.metadata?.model_tested
                         return (
-                          <TableHead key={id} className="text-center">
+                          <TableHead key={id} className="text-center p-1 md:p-1">
                             <div className="flex flex-col items-center gap-1">
-                              <span className="text-xs font-normal text-muted-foreground truncate w-[100px]" title={id}>
+                              <span className="text-xs font-normal text-muted-foreground truncate w-[60px]" title={id}>
                                 {id.split('-')[0]}...
                               </span>
                               {model && <Badge variant="outline" className="text-[10px]">{String(model)}</Badge>}
@@ -172,11 +172,11 @@ export function CompareEvaluationsPage() {
                     ) : (
                       tableData.rows.map((row) => (
                         <TableRow key={row.metric}>
-                          <TableCell className="font-medium">{row.metric}</TableCell>
+                          <TableCell className="font-medium text-xs md:text-sm sm:p-1 md:p-1">{row.metric}</TableCell>
                           {tableData.runIds.map((id) => {
                             const val = row[id]
                             return (
-                              <TableCell key={id} className="text-center font-mono">
+                              <TableCell key={id} className="text-center font-mono text-xs md:text-sm p-1 md:p-3">
                                 {val !== null && val !== undefined ? Number(val).toFixed(3) : "-"}
                               </TableCell>
                             )
