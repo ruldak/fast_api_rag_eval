@@ -35,30 +35,18 @@ def run_evaluation(self, run_id: str):
     
     db = SessionLocal()
     try:
-        # 1. Fetch run and update status
         logger.info(f"[RUN:{run_id}] 📥 Fetching evaluation run from database...")
         run = db.execute(select(EvaluationRun).where(EvaluationRun.id == run_id)).scalar_one()
         
         run.status = "processing"
         db.commit()
         logger.info(f"[RUN:{run_id}] 🔄 Status updated to 'processing'")
-
-        # 2. Fetch items and metrics
-        items = db.execute(
-            select(EvaluationItem).where(EvaluationItem.run_id == run_id)
-        ).scalars().all()
         
         metrics = db.execute(
             select(MetricDefinition).where(MetricDefinition.tenant_id == run.tenant_id)
         ).scalars().all()
         
         requested_metrics = run.metadata_.get("requested_metrics", list({m.name for m in metrics}))
-        
-        logger.info(
-            f"[RUN:{run_id}] 📊 Loaded {len(items)} items | "
-            f"{len(metrics)} metrics available | "
-            f"requested: {requested_metrics}"
-        )
 
         metric_map = {m.name: m for m in metrics}
         client = GroqClient(api_key=settings.GROQ_API_KEY)
@@ -66,7 +54,6 @@ def run_evaluation(self, run_id: str):
         
         semaphore = asyncio.Semaphore(2)
 
-        # 4. Define async worker per item-metric
         async def process_item(item, metric_name):
             metric = metric_map.get(metric_name)
             if not metric:
@@ -86,7 +73,6 @@ def run_evaluation(self, run_id: str):
                     ground_truth=item.ground_truth
                 )
 
-                # --- IMPLEMENTASI LOCAL RETRY LOOP ---
                 max_local_retries = 7
                 for attempt in range(max_local_retries):
                     try:
@@ -113,7 +99,6 @@ def run_evaluation(self, run_id: str):
                         error_msg = str(e)
                         is_rate_limit = "rate_limit" in error_msg.lower() or "429" in error_msg
                         
-                        # Jika Rate Limit DAN masih ada sisa retry
                         if is_rate_limit and attempt < max_local_retries - 1:
                             # Exponential Backoff: 1s, 2s, 4s, 8s, 16s, 32s, 64s
                             # Ditambah Jitter (angka acak 0-1 detik) agar request tidak menumpuk serentak setelah sleep
@@ -136,48 +121,46 @@ def run_evaluation(self, run_id: str):
                             "details": {"error": error_msg, "prompt_length": len(prompt)}
                         }
 
-        # 5. Execute all evaluations asynchronously
-        async def process_all():
+        CHUNK_SIZE = 200
+        offset = 0
+
+        async def execute_batch(batch_tasks):
+            return await asyncio.gather(*batch_tasks, return_exceptions=True)
+        
+        while True:
+            items_chunk = db.execute(
+                select(EvaluationItem)
+                .where(EvaluationItem.run_id == run_id)
+                .where(~EvaluationItem.scores.any())
+                .limit(CHUNK_SIZE)
+                .offset(offset)
+            ).scalars().all()
+
+            if not items_chunk:
+                break
+
+            logger.info(f"[RUN:{run_id}] 📦 Processing chunk {offset//CHUNK_SIZE + 1} ({len(items_chunk)} items)")
+
             tasks = []
-            for idx, item in enumerate(items, 1):
+            for item in items_chunk:
                 for metric_name in requested_metrics:
                     tasks.append(process_item(item, metric_name))
             
-            total_tasks = len(tasks)
-            logger.info(f"[RUN:{run_id}] 🏃 Starting {total_tasks} total evaluations (max 3 parallel)")
+            results = asyncio.run(execute_batch(tasks))
             
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for res in results:
+                if isinstance(res, dict) and res.get("value") is not None:
+                    score = Score(
+                        item_id=res["item_id"],
+                        metric_id=res["metric_id"],
+                        value=res["value"],
+                        details=res["details"]
+                    )
+                    db.add(score)
             
-            # Log summary
-            success = sum(1 for r in results if isinstance(r, dict) and r.get("value") is not None)
-            failed = sum(1 for r in results if isinstance(r, dict) and r.get("value") is None)
-            errors = sum(1 for r in results if isinstance(r, Exception))
-            
-            logger.info(
-                f"[RUN:{run_id}] 📈 Batch complete | success={success} | failed={failed} | errors={errors}"
-            )
-            return results
+            db.commit()
+            offset += CHUNK_SIZE
 
-        results = asyncio.run(process_all())
-
-        # 6. Save all scores to the database
-        logger.info(f"[RUN:{run_id}] 💾 Saving scores to database...")
-        saved_count = 0
-        for res in results:
-            if isinstance(res, dict):
-                score = Score(
-                    item_id=res["item_id"],
-                    metric_id=res["metric_id"],
-                    value=res["value"],
-                    details=res["details"]
-                )
-                db.add(score)
-                saved_count += 1
-        
-        db.commit()
-        logger.info(f"[RUN:{run_id}] 💾 Saved {saved_count} scores")
-
-        # 7. Update status to completed
         run.status = "completed"
         run.metadata_["processed_at"] = str(time.time())
         db.commit()
