@@ -5,6 +5,25 @@
 
 ---
 
+## UI Screenshots
+
+<details>
+<summary><b>View UI Screenshots</b></summary>
+
+| Dashboard | Evaluations |
+| :---: | :---: |
+| <img src="ui%20screenshots/dashboard.png" alt="Dashboard" width="100%"> | <img src="ui%20screenshots/evaluations.png" alt="Evaluations" width="100%"> |
+| **Evaluation Details** | **Calibration Page** |
+| <img src="ui%20screenshots/evaluation-details.png" alt="Evaluation Details" width="100%"> | <img src="ui%20screenshots/calibration-page.png" alt="Calibration Page" width="100%"> |
+| **Human Reviews** | **Metrics** |
+| <img src="ui%20screenshots/human_reviews.png" alt="Human Reviews" width="100%"> | <img src="ui%20screenshots/metric.png" alt="Metric" width="100%"> |
+| **Compare Results** | **Settings** |
+| <img src="ui%20screenshots/compare-result.png" alt="Compare Results" width="100%"> | <img src="ui%20screenshots/settings.png" alt="Settings" width="100%"> |
+
+</details>
+
+---
+
 ## Project Structure
 
 ```
