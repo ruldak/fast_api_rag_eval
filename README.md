@@ -5,6 +5,25 @@
 
 ---
 
+## Table of Contents
+
+- [UI Screenshots](#ui-screenshots)
+- [Project Structure](#project-structure)
+- [What Is This?](#what-is-this)
+- [How It Works (The Flow)](#how-it-works-the-flow)
+- [Core Concepts](#core-concepts)
+- [Database Schema Overview](#database-schema-overview)
+- [API Reference](#api-reference)
+- [Tech Stack](#tech-stack)
+- [Getting Started (Full App with Docker)](#getting-started-full-app-with-docker)
+- [Deployment with a Reverse Proxy](#deployment-with-a-reverse-proxy)
+- [Running Without Docker](#running-without-docker)
+- [Frontend Development (Local)](#frontend-development-local)
+- [Running Tests](#running-tests)
+- [Engineering Decisions & Trade-offs](#engineering-decisions--trade-offs)
+
+---
+
 ## UI Screenshots
 
 <details>
@@ -607,9 +626,24 @@ Three routes back into the app, decided purely by the request path:
 
 This matches the production intent already baked into the frontend (`VITE_API_BASE_URL` is left empty so the dashboard issues same-origin requests).
 
-### Caddyfile
+### 1. Install Caddy
 
-Save as `docker/Caddyfile` (or any path of your choice). The site **address** in the first line is the only thing that changes between production and local:
+You can install Caddy easily depending on your OS:
+
+- **macOS:** `brew install caddy`
+- **Debian/Ubuntu:**
+  ```bash
+  sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+  sudo apt update
+  sudo apt install caddy
+  ```
+- **Windows:** Download the executable from [caddyserver.com](https://caddyserver.com/download) or use scoop: `scoop install caddy`
+
+### 2. Edit Caddyfile
+
+Create a file named `Caddyfile` (you can save it as `docker/Caddyfile` or any path of your choice). The site **address** in the first line is the only thing that changes between production and local:
 
 ```caddy
 # Production — replace with your real domain in production. Caddy
@@ -644,6 +678,15 @@ http://localhost:8080 {
 > **Port collision:** the compose `frontend: 5173:3000` mapping means host port 5173 is already in use. If you also make Caddy bind 5173, the second listener fails. Pick any port other than `5173` for Caddy's site address — `8080` is the conventional alternative.
 
 > **Why this works without `try_files` / `file_server`:** the `frontend` container's `serve -s dist -l 3000` already does the SPA fallback (single-page-app routing). Caddy only has to forward paths.
+
+### 3. Run Caddy
+
+Once your `Caddyfile` is ready and the Docker compose stack is running, start Caddy:
+
+```bash
+caddy run --config docker/Caddyfile
+```
+*(Adjust the `--config` path if you saved it elsewhere).*
 
 ### Re-deploying changes
 
